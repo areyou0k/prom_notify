@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notify
+spec:
+  selector:
+    matchLabels:
+      app: notify
+  template:
+    metadata:
+      labels:
+        app: notify
+    spec:
+      volumes:
+        - name: notify-cm
+          configMap:
+            name: notify-cm
+      containers:
+        - name: notify
+          image: xxxx/notify:v1.1.1
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+          # command: [ "bash","-c","sleep 3600" ]
+          ports:
+            - containerPort: 11122
+          volumeMounts:
+            - name: notify-cm
+              mountPath: /etc/app
+              readOnly: true
+
+        - name: prometheus-alertmanager-configmap-reload
+          image: "jimmidyson/configmap-reload:v0.4.0"
+          imagePullPolicy: "IfNotPresent"
+          args:
+            - --volume-dir=/etc/app
+            - --webhook-url=http://127.0.0.1:11122/reload
+          resources:
+            limits:
+              memory: "64Mi"
+              cpu: "50m"
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+          volumeMounts:
+            - name: notify-cm
+              mountPath: /etc/app
+              readOnly: true
+
+      nodeSelector:
+        nodegroup-type: infra
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notify
+spec:
+  selector:
+    app: notify
+  ports:
+    - port: 80
+      targetPort: 11122
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: notify01
+  labels:
+    name: notify01
+spec:
+  rules:
+    - host: notify01.xx.cn
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: notify
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - notify01.xx.cn
+      secretName: xx-cn-tls
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notify-cm
+data:
+  alarmgroup.yaml: |
+    api_key: 5kvcsf
+    dingtalk: #type
+      config:
+        argocd: #aisle
+          token: # 支持多个群组，要求数组对象
+          - 501c47
+          key: .  # 多个群组关键字至少有一个相同
+      group: #group
+        test:
+        - 1667
+        - 176
+    telephone: #type
+      config:
+        ali_sms: #aisle
+          sign_name: 沙盒
+          template_code: SMS_
+          Template_param: co
+          access_key: LTAI5
+          access_key_secret: 1EmtY
+      group:
+        test: #group
+        - 1667
+        - 176
+    # 当配置有误，默认会走这个通道 默认通道为dingding
+    default:
+      default:
+        config:
+          default:
+            token: 
+            - 501c47c30f6a1ffb
+            key: .
+        group:
+          default:
+          - 1667
+    email:
+      config: []
+      test:
+      - wumia
+---
