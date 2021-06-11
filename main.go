@@ -13,10 +13,8 @@ import (
 func main() {
 	// 加载配置文件
 	yamlconfig.CreateYamlFactory()
-	//监听文件变化载配置文件 适用于configmap
+	//监听文件变化载配置文件 本地文件
 	yamlconfig.ConfigYml.ConfigFileChangeListen()
-	//监听配置文件变化
-	yamlconfig.ConfigYml.yamlConfig.viper.WatchConfig()
 
 	// 监听告警消息
 	go webhook.WebhookWorker()
